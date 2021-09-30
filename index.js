@@ -17,9 +17,11 @@ app.post('/', (req, res) => {
 app.use('/api/cars/search', search);
 app.use('/api/upload', upload);
 
-const port = process.env.PORT || 5001;
+let port = process.env.PORT || 5001;
 
-if(process.env.NODE_ENV == 'production') port = 80;
+if(process.env.NODE_ENV == 'production') { 
+    port = 80;
+}
 
 app.listen(port, () => {
     console.log("Server is listening on port ", port);
