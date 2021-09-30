@@ -12,5 +12,5 @@ exports.uploadVehicalBookingGuide = async (jsonobjs, bankId) => {
     const bankRef = db.collection("banks").doc(bankId);
     await bankRef.update({vehicalBookingGuide: jsonobjs});
 
-    console.log(`Upload completed in ${collection} for bank ${bankId}`);
+    console.log(`Upload completed for bank ${bankId}`);
 }
