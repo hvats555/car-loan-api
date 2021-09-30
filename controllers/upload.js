@@ -1,3 +1,7 @@
+const csv=require('csvtojson')
+const path = require('path');
+const fs = require('fs');
+
 const {uploadInventory, uploadVehicalBookingGuide} = require('../utils/upload');
 
 exports.uploadInventory = (req, res, next) => {
@@ -13,7 +17,7 @@ exports.uploadInventory = (req, res, next) => {
 }
 
 exports.uploadVehicalBookingGuide = (req, res, next) => {
-    const { bankId } = req.body;
+    const bankId = req.params.bankId;
 
     const filePath = path.join('./uploads', req.file.filename);
     const fullPath =  path.resolve(filePath);

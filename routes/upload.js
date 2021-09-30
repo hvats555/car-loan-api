@@ -7,6 +7,6 @@ let router = express.Router();
 const {uploadInventory, uploadVehicalBookingGuide} = require('../controllers/upload');
 
 router.post('/inventory', upload.single('file'), uploadInventory);
-router.post('/vehicalBookingGuide', upload.single('file'), uploadVehicalBookingGuide);
+router.post('/vehicalBookingGuide/:bankId', upload.single('file'), uploadVehicalBookingGuide);
 
 module.exports = router;
