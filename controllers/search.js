@@ -1,9 +1,8 @@
-const temp = require('busboy');
 const db = require('../firebase');
 const {emiCalculator} = require('../utils/search');
 
 const next = async (last, limit) => {
-    const carsInventoryRef = db.collection('carsInventory').orderBy('price').startAfter(last).limit(limit);
+    const carsInventoryRef = db.collection('inventory').orderBy('price').startAfter(last).limit(limit);
     const snapshot = await carsInventoryRef.get();
 
     const inventory = [];
@@ -40,8 +39,6 @@ exports.search = async (req, res) => {
     let interestBreak = parseInt(req.body.interestBreak);
 
     let response = [];
-
-    console.log(profitAmount);
 
     let limit = 2;
 
@@ -87,7 +84,7 @@ exports.search = async (req, res) => {
         inventory = nextInfo.inventory;
         last = nextInfo.last;
     } else {
-        const carsInventoryRef = db.collection('carsInventory').orderBy('price').limit(limit);
+        const carsInventoryRef = db.collection('inventory').orderBy('price').limit(limit);
         const snapshot = await carsInventoryRef.get();
     
         last = snapshot.docs[snapshot.docs.length - 1];

@@ -1,15 +1,21 @@
 const csv=require('csvtojson')
 const path = require('path');
 const fs = require('fs');
+const db = require('../firebase');
 
+const {purgeInventory} = require('../utils/purgeInventory');
 const {uploadInventory, uploadVehicalBookingGuide} = require('../utils/upload');
 
-exports.uploadInventory = (req, res, next) => {
+exports.uploadInventory = async (req, res, next) => {
     const filePath = path.join('./uploads', req.file.filename);
     const fullPath =  path.resolve(filePath);
+
+    // if(req.params.purge) {
+    await purgeInventory();
+    // }
     
-    csv().fromFile(fullPath).then((json) => {
-        uploadInventory(json);
+    csv().fromFile(fullPath).then(async (json) => {
+        await uploadInventory(json);
 
         fs.unlinkSync(fullPath);
         res.send(json);
