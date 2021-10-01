@@ -17,7 +17,7 @@ app.post('/', (req, res) => {
 app.use('/api/cars/search', search);
 app.use('/api/upload', upload);
 
-let port = process.env.PORT || 5001;
+let port = process.env.PORT || 5000;
 
 if(process.env.NODE_ENV == 'production') { 
     port = 80;
