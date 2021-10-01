@@ -21,10 +21,6 @@ app.use('/api/upload', upload);
 
 let port = process.env.PORT || 5000;
 
-if(process.env.NODE_ENV == 'production') { 
-    port = 80;
-}
-
 app.listen(port, () => {
     console.log("Server is listening on port ", port);
 })
