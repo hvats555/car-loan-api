@@ -7,7 +7,7 @@ const upload = require('./routes/upload');
 
 const app = express();
 app.use(cors({
-    origin: ['http://localhost:3000', 'https://cars-development-1f062.web.app']
+    origin: "*"
   }));
 
 app.use(express.json())
