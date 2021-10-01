@@ -7,12 +7,12 @@ const upload = require('./routes/upload');
 
 const app = express();
 app.use(cors({
-    origin: "*"
+    origin: ['http://localhost:3000', 'https://cars-development-1f062.web.app']
   }));
 
 app.use(express.json())
 
-app.post('/', (req, res) => {
+app.get('/', (req, res) => {
     res.send("Status: OK");
 });
 
