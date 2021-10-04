@@ -34,11 +34,21 @@ exports.search = async (req, res) => {
     let customerId = req.body.customerId;
     let profitAmount = parseInt(req.body.profitAmount);
     let downPayment = parseInt(req.body.downPayment);
-    let tradeInValue = parseInt(req.body.tradeInValue);
     let termExtension = parseInt(req.body.termExtension);
     let interestBreak = parseInt(req.body.interestBreak);
 
-    let response = [];
+    let tradeInAllowance = parseInt(req.body.tradeInAllowance);
+    let tradeLienAmount = parseInt(req.body.tradeLienAmount);
+    let docfee = parseInt(req.body.docfee);
+    let warranty = parseInt(req.body.warranty);
+
+    console.log(req.body);
+
+    let tradeInValue = tradeLienAmount - tradeInAllowance;
+    console.log("trade in value", tradeInValue);
+
+    const response = [];
+
 
     let limit = 2;
 
@@ -46,7 +56,6 @@ exports.search = async (req, res) => {
         if(req.query.limit < 1) return res.status(400).json({"error": "limit cannot be less than 1"})
         limit = parseInt(req.query.limit);
     }
-
 
     if(!customerId) {
         return res.status(400).json({"error": "customer id not provided"});
@@ -72,9 +81,26 @@ exports.search = async (req, res) => {
         interestBreak = 0;
     }
 
+    if(!tradeInAllowance) {
+        tradeInAllowance = 0;
+    }
+
+    if(!tradeLienAmount) {
+        tradeLienAmount = 0;
+    }
+
+    if(!docfee) {
+        docfee = 0;
+    }
+
+    if(!warranty) {
+        warranty = 0;
+    }
+
     const customerRef = db.collection('customers').doc(customerId);
     const customer = await customerRef.get();
     const approvedBanks = customer.data().approvedBanks;
+    const taxExemption = customer.data().taxExemption;
 
     let inventory = [];
     let last;
@@ -104,7 +130,7 @@ exports.search = async (req, res) => {
         });
     }
 
-    for(const car of inventory) {
+    for(const car of inventory) {        
         const selectedBank = [];
         let calculatedEmi = 0;
         
@@ -124,15 +150,34 @@ exports.search = async (req, res) => {
                     }
                 }
             }
-
+            
+            // ! Added term extension
             const term = parseInt(carStatus.maxTerm) + termExtension;
-            const carPrice = car.price + profitAmount;
+
+            // ! added docfee warranty and profit Amount;
+            const carPrice = car.price + profitAmount + warranty + docfee;
+
+            const bank_fee = 0;
+
+            const finance_net_vehicle = car.price + tradeInValue;
+
+
+            let finance_GST = 0;
+            let finance_PST = 0;
+
+            if(!taxExemption) {
+                finance_GST = (finance_net_vehicle + docfee) * 0.07;
+                finance_PST = (finance_net_vehicle + docfee + warranty) * 0.05;
+            }
+
+            const finance_total = finance_net_vehicle + docfee + warranty + finance_GST + finance_PST + bank_fee - downPayment;
             
             if(interestBreak >= parseInt(approvedBanks[i].interestRate)) return res.status(400).json({"error": "interest break should be less than the approved bank interest."})
     
             const interestRate = parseInt(approvedBanks[i].interestRate) - interestBreak;
-    
-            const emi = emiCalculator(carPrice, interestRate, term, downPayment, tradeInValue);
+
+            const emi = emiCalculator(finance_total, interestRate, term, downPayment, tradeInValue);
+
             if(Math.round(emi) <= Math.round(parseInt(approvedBanks[i].monthlyEmi))) {
                 const bankValue = approvedBanks[i];
                 bankValue.calculatedEmi = emi;
@@ -140,6 +185,8 @@ exports.search = async (req, res) => {
                 calculatedEmi = emi;
             }
         }
+
+        // console.log(selectedBank);
 
         if(calculatedEmi != 0) {
             response.push({
@@ -149,6 +196,8 @@ exports.search = async (req, res) => {
             })
         }
     }
+
+    console.log(response);
 
     res.send({
         lastDocRef: last.data().price,

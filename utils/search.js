@@ -5,7 +5,8 @@ exports.emiCalculator = (loanAmount, interestRate, term, downPayment, tradeIn) =
     let down = parseInt(downPayment);
     let trade = parseInt(tradeIn);
 
-    let totalDown  = down + trade;
+    // let totalDown  = down + trade;
+    let totalDown = 0;
     let annInterest = intRate;
     let monInt = annInterest/ 1200;
 
