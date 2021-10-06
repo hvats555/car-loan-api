@@ -18,9 +18,9 @@ const next = async (last, limit) => {
             coverImage: doc.data().cover_image,
             url: doc.data().cat_URL,
             stockNumber: doc.data()["stock#"],
-            numberOfAccidents: doc.data().carfax_number_of_accidents,
-            notes: doc.data().carfax_notes,
-            totalDamage: doc.data().carfax_total_damage,
+            insuranceClaim: doc.data().insurance_claim,
+            insuranceClaimOther: doc.data().insurance_claim_other,
+            otherDamage: doc.data().other_damage
         }
 
         last = snapshot.docs[snapshot.docs.length - 1];
@@ -131,9 +131,9 @@ exports.search = async (req, res) => {
                 url: doc.data().cat_URL,
                 age: doc.data().age,
                 stockNumber: doc.data()["stock#"],
-                numberOfAccidents: doc.data().carfax_number_of_accidents,
-                notes: doc.data().carfax_notes,
-                totalDamage: doc.data().carfax_total_damage,
+                insuranceClaim: doc.data().insurance_claim,
+                insuranceClaimOther: doc.data().insurance_claim_other,
+                otherDamage: doc.data().other_damage,
             }
             inventory.push(car);
         });

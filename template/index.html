@@ -116,9 +116,9 @@
           <th>VIN</th>
           <th>Mileage</th>
           <th>Age</th>
-          <th>Accidents</th>
-          <th>Notes</th>
-          <th>Total Damage</th>
+          <th>Insurance claim</th>
+          <th>Insurance claim other</th>
+          <th>Other damage</th>
 
           <% for(var i=0; i<res.approvedBanks.length; i++){ %>
             <th><%= res.approvedBanks[i].bankName %></th>
@@ -140,9 +140,9 @@
             <td><%= res.results[i].car.vin || "N/A" %></td>
             <td><%= res.results[i].car.mileage || "N/A" %></td>
             <td><%= res.results[i].car.age || "N/A" %></td>
-            <td><%= res.results[i].car.numberOfAccidents || "N/A" %></td>
-            <td><%= res.results[i].car.notes || "N/A" %></td>
-            <td><%= res.results[i].car.totalDamage || "N/A" %></td>
+            <td><%= res.results[i].car.insuranceClaim || "N/A" %></td>
+            <td><%= res.results[i].car.insuranceClaimOther || "N/A" %></td>
+            <td><%= res.results[i].car.otherDamage || "N/A" %></td>
 
             <% filteredBanks.map((bank) => {
               if(bank.foundCount == 1) { %>
