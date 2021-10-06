@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <link rel="stylesheet" type="text/css" href="./style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500&family=Roboto:wght@300&display=swap"
+      rel="stylesheet"
+    />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Open Sans", sans-serif;
+        font-size: 14px;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .nav {
+        color: white;
+        font-weight: 500;
+        font-size: 18px;
+        padding: 0.5rem;
+        background-color: #1976d2;
+      }
+
+      .container {
+        padding: 1rem;
+      }
+
+      /*Table styling*/
+
+      table {
+        width: 100%;
+        text-align: center;
+        margin: 20px 0;
+        padding: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      thead {
+        color: #ffffff;
+        background-color: #6c7ae0;
+      }
+
+      th,
+      td {
+        padding: 8px;
+        text-align: center;
+      }
+
+      tbody > tr:nth-of-type(odd) {
+        background: #eee;
+      }
+
+      tfoot {
+        color: #ffffff;
+        background-color: #6c7ae0;
+      }
+
+      table tr:first-child th:first-child {
+        border-top-left-radius: 5px;
+      }
+
+      table tr:first-child th:last-child {
+        border-top-right-radius: 5px;
+      }
+
+      table tr:last-child td:first-child {
+        border-bottom-left-radius: 5px;
+      }
+
+      table tr:last-child td:last-child {
+        border-bottom-right-radius: 5px;
+      }
+
+      .image-container {
+        border-radius: 50%;
+        height: 80px;
+        width: 80px;
+      }
+
+      .image-container > img {
+        border-radius: 50%;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+
+    <div class="nav">
+      <div class="container">Car Jutsu</div>
+    </div>
+
+    <div class="container">
+      <h2>Search Results</h2>
+
+      <table>
+        <tr>
+          <th>Image</th>
+          <th>Title</th>
+          <th>Stock Number</th>
+          <th>VIN</th>
+          <th>Mileage</th>
+          <th>Age</th>
+          <th>Accidents</th>
+          <th>Notes</th>
+          <th>Total Damage</th>
+
+          <% for(var i=0; i<res.approvedBanks.length; i++){ %>
+            <th><%= res.approvedBanks[i].bankName %></th>
+          <%}%>
+  
+        </tr>
+
+        <% for(var i=0; i<res.results.length; i++){ %>
+          <tr>
+            <td>
+              <div class="image-container">
+                <img src="<%= res.results[i].car.coverImage %>" />
+              </div>
+            </td>
+  
+            <td><%= res.results[i].car.name || "N/A" %></td>
+  
+            <td><%= res.results[i].car.stockNumber || "N/A" %></td>
+            <td><%= res.results[i].car.vin || "N/A" %></td>
+            <td><%= res.results[i].car.mileage || "N/A" %></td>
+            <td><%= res.results[i].car.age || "N/A" %></td>
+            <td><%= res.results[i].car.numberOfAccidents || "N/A" %></td>
+            <td><%= res.results[i].car.notes || "N/A" %></td>
+            <td><%= res.results[i].car.totalDamage || "N/A" %></td>
+
+            <% filteredBanks.map((bank) => {
+              if(bank.foundCount == 1) { %>
+                <td style="color: green"><%= bank.calculatedEmi %></td>
+             <% } else { %>
+                <td style="color: red"><%= bank.calculatedEmi %></td>
+              <% }
+            }) %>
+        
+          </tr>
+        <%}%>
+      </table>
+    </div>
+  </body>
+</html>

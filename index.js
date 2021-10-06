@@ -4,6 +4,7 @@ const express = require("express");
 
 const search = require('./routes/search');
 const upload = require('./routes/upload');
+const email = require('./routes/emails');
 
 const app = express();
 app.use(cors({
@@ -18,6 +19,8 @@ app.get('/', (req, res) => {
 
 app.use('/api/cars/search', search);
 app.use('/api/upload', upload);
+app.use('/api/email', email);
+app.set("view engine","ejs")
 
 let port = process.env.PORT || 5000;
 

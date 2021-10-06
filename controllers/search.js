@@ -12,12 +12,17 @@ const next = async (last, limit) => {
             name: doc.data().name,
             price: parseInt(doc.data().cost),
             mileage: parseInt(doc.data().mileage),
+            age: doc.data().age,
             year: parseInt(doc.data().year),
             vin: doc.data().VIN,
             coverImage: doc.data().cover_image,
             url: doc.data().cat_URL,
-            stockNumber: doc.data()["stock#"]
+            stockNumber: doc.data()["stock#"],
+            numberOfAccidents: doc.data().carfax_number_of_accidents,
+            notes: doc.data().carfax_notes,
+            totalDamage: doc.data().carfax_total_damage,
         }
+
         last = snapshot.docs[snapshot.docs.length - 1];
 
         inventory.push(car);
@@ -124,7 +129,11 @@ exports.search = async (req, res) => {
                 vin: doc.data().VIN,
                 coverImage: doc.data().cover_image,
                 url: doc.data().cat_URL,
-                stockNumber: doc.data()["stock#"]
+                age: doc.data().age,
+                stockNumber: doc.data()["stock#"],
+                numberOfAccidents: doc.data().carfax_number_of_accidents,
+                notes: doc.data().carfax_notes,
+                totalDamage: doc.data().carfax_total_damage,
             }
             inventory.push(car);
         });
