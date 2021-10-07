@@ -1,6 +1,12 @@
 const db = require('../firebase');
 const {emiCalculator} = require('../utils/search');
 
+const fs = require('fs');
+
+db.settings({
+    ignoreUndefinedProperties: true
+})
+
 const next = async (last, limit) => {
     const carsInventoryRef = db.collection('inventory').orderBy('price').startAfter(last).limit(limit);
     const snapshot = await carsInventoryRef.get();
@@ -18,9 +24,9 @@ const next = async (last, limit) => {
             coverImage: doc.data().cover_image,
             url: doc.data().cat_URL,
             stockNumber: doc.data()["stock#"],
-            insuranceClaim: doc.data().insurance_claim,
-            insuranceClaimOther: doc.data().insurance_claim_other,
-            otherDamage: doc.data().other_damage
+            numberOfAccidents: doc.data().carfax_number_of_accidents,
+            notes: doc.data().carfax_notes,
+            totalDamage: doc.data().carfax_total_damage,
         }
 
         last = snapshot.docs[snapshot.docs.length - 1];
@@ -52,7 +58,7 @@ exports.search = async (req, res) => {
     let tradeInValue = tradeLienAmount - tradeInAllowance;
     console.log("trade in value", tradeInValue);
 
-    const response = [];
+    let response = [];
 
 
     let limit = 2;
@@ -131,14 +137,15 @@ exports.search = async (req, res) => {
                 url: doc.data().cat_URL,
                 age: doc.data().age,
                 stockNumber: doc.data()["stock#"],
-                insuranceClaim: doc.data().insurance_claim,
-                insuranceClaimOther: doc.data().insurance_claim_other,
-                otherDamage: doc.data().other_damage,
+                numberOfAccidents: doc.data().carfax_number_of_accidents,
+                notes: doc.data().carfax_notes,
+                totalDamage: doc.data().carfax_total_damage
             }
             inventory.push(car);
         });
     }
 
+    let tryCalculatedEmi = [];
     for(const car of inventory) {        
         const selectedBank = [];
         let calculatedEmi = 0;
@@ -189,24 +196,40 @@ exports.search = async (req, res) => {
 
             if(Math.round(emi) <= Math.round(parseInt(approvedBanks[i].monthlyEmi))) {
                 const bankValue = approvedBanks[i];
-                bankValue.calculatedEmi = emi;
+                bankValue.emi = emi;
                 selectedBank.push(bankValue);
                 calculatedEmi = emi;
+                tryCalculatedEmi.push(emi);
             }
         }
 
-        // console.log(selectedBank);
+        // for(let i=0; i<selectedBank; i++) {
+        //     selectedBank[i].calculatedEmi = tryCalculatedEmi[i];
+        // }
 
+        const obj = {
+            car: car,
+            calculatedEmi: calculatedEmi,
+            bank: selectedBank
+        }
+        
         if(calculatedEmi != 0) {
-            response.push({
-                car: car,
-                calculatedEmi: calculatedEmi,
-                bank: selectedBank
-            })
+            response = [
+            ...response,
+            obj,
+            ];
+        // }
         }
     }
 
-    console.log(response);
+    console.log(tryCalculatedEmi);
+
+    for(let i=0; i<response.length; i++) {
+        // selectedBank[i].calculatedEmi = tryCalculatedEmi[i];
+        for(let j=0; j<response[i].bank.length; j++) {
+            response[i].bank[j].newEmi = tryCalculatedEmi[j];
+        }
+    }
 
     res.send({
         lastDocRef: last.data().price,

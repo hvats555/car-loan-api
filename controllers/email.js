@@ -78,11 +78,7 @@ exports.sendEmail = (async (req, res) => {
             sendGridEmail(req.body.to, filePath);
             fs.unlinkSync(filePath);
         }); 
-
-        res.header('Content-Type', 'application/pdf;charset=utf-8');
-        res.header('Content-Disposition', 'attachment; filename=searchResult.pdf');
-
-        res.type('application/pdf').send(buffer);
-        return buffer;
+        
+        res.status(200).send("OK");
     });
 });
