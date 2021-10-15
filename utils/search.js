@@ -1,9 +1,9 @@
-exports.emiCalculator = (loanAmount, interestRate, term, downPayment, tradeIn) => {         
+exports.emiCalculator = (loanAmount, interestRate, term) => {         
     let amount = parseInt(loanAmount);
-    let intRate = parseInt(interestRate);
+    let intRate = parseFloat(interestRate);
     let months = parseInt(term);
-    let down = parseInt(downPayment);
-    let trade = parseInt(tradeIn);
+    // let down = parseInt(downPayment);
+    // let trade = parseInt(tradeIn);
 
     // let totalDown  = down + trade;
     let totalDown = 0;

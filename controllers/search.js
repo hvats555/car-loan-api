@@ -1,13 +1,9 @@
 const db = require('../firebase');
 const {emiCalculator} = require('../utils/search');
+const axios = require('axios');
+const _ = require('lodash');
 
-const fs = require('fs');
-
-db.settings({
-    ignoreUndefinedProperties: true
-})
-
-const next = async (last, limit) => {
+const next = async (profitAmount, last, limit) => {
     const carsInventoryRef = db.collection('inventory').orderBy('price').startAfter(last).limit(limit);
     const snapshot = await carsInventoryRef.get();
 
@@ -27,6 +23,7 @@ const next = async (last, limit) => {
             numberOfAccidents: doc.data().carfax_number_of_accidents,
             notes: doc.data().carfax_notes,
             totalDamage: doc.data().carfax_total_damage,
+            profit: parseInt(profitAmount)
         }
 
         last = snapshot.docs[snapshot.docs.length - 1];
@@ -42,24 +39,25 @@ const next = async (last, limit) => {
 
 
 exports.search = async (req, res) => {
+    console.log("Recieved car search request");
+    console.log("------------- Body data --------------");
+    console.log(req.body);
+    console.log("---------------------------");
+
     let customerId = req.body.customerId;
     let profitAmount = parseInt(req.body.profitAmount);
+    let adminFee = parseInt(req.body.adminFee);
+
     let downPayment = parseInt(req.body.downPayment);
     let termExtension = parseInt(req.body.termExtension);
     let interestBreak = parseInt(req.body.interestBreak);
-
+    
     let tradeInAllowance = parseInt(req.body.tradeInAllowance);
     let tradeLienAmount = parseInt(req.body.tradeLienAmount);
     let docfee = parseInt(req.body.docfee);
     let warranty = parseInt(req.body.warranty);
 
-    console.log(req.body);
-
-    let tradeInValue = tradeLienAmount - tradeInAllowance;
-    console.log("trade in value", tradeInValue);
-
     let response = [];
-
 
     let limit = 2;
 
@@ -68,45 +66,21 @@ exports.search = async (req, res) => {
         limit = parseInt(req.query.limit);
     }
 
-    if(!customerId) {
-        return res.status(400).json({"error": "customer id not provided"});
-    }
+    if(!customerId) return res.status(400).json({"error": "customer id not provided"});
 
-    if(!profitAmount) {
-        profitAmount = 3000;
-    }
+    if(!profitAmount) profitAmount = 3000;
+    if(!adminFee) adminFee = 700;
 
-    if(!downPayment) {
-        downPayment = 0;
-    }
+    if(!downPayment) downPayment = 0;
+    if(!termExtension) termExtension = 0;
+    if(!interestBreak) interestBreak = 0;
+    if(!tradeInAllowance) tradeInAllowance = 0;
+    if(!tradeLienAmount) tradeLienAmount = 0;
+    if(!docfee) docfee = 0;
+    if(!warranty) warranty = 0;
 
-    if(!tradeInValue) {
-        tradeInValue = 0;
-    }
+    let tradeInValue = tradeLienAmount - tradeInAllowance;
 
-    if(!termExtension) {
-        termExtension = 0;
-    }
-
-    if(!interestBreak) {
-        interestBreak = 0;
-    }
-
-    if(!tradeInAllowance) {
-        tradeInAllowance = 0;
-    }
-
-    if(!tradeLienAmount) {
-        tradeLienAmount = 0;
-    }
-
-    if(!docfee) {
-        docfee = 0;
-    }
-
-    if(!warranty) {
-        warranty = 0;
-    }
 
     const customerRef = db.collection('customers').doc(customerId);
     const customer = await customerRef.get();
@@ -116,8 +90,9 @@ exports.search = async (req, res) => {
     let inventory = [];
     let last;
 
+    console.log("Fetching inventory from firestore...");
     if(req.query.startAfter) {
-        const nextInfo = await next(req.query.startAfter, limit);
+        const nextInfo = await next(profitAmount, req.query.startAfter, limit);
         inventory = nextInfo.inventory;
         last = nextInfo.last;
     } else {
@@ -139,95 +114,118 @@ exports.search = async (req, res) => {
                 stockNumber: doc.data()["stock#"],
                 numberOfAccidents: doc.data().carfax_number_of_accidents,
                 notes: doc.data().carfax_notes,
-                totalDamage: doc.data().carfax_total_damage
+                totalDamage: doc.data().carfax_total_damage,
+                profit: req.body.profitAmount,
             }
             inventory.push(car);
         });
     }
 
-    let tryCalculatedEmi = [];
-    for(const car of inventory) {        
-        const selectedBank = [];
-        let calculatedEmi = 0;
-        
+    console.log("Fetched inventory from firestore");
+
+    for(const car of inventory) {  
+        console.log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+              
         let carStatus = {};
 
-        for(let i=0; i<approvedBanks.length; i++) {
-            const bankRef = db.collection('banks').doc(approvedBanks[i].bankId);
+        const carDetailsResponse = await axios.get(`http://candecode.com/vins/${car.vin}`);
 
-            const bank = await bankRef.get();
-            const vehicalBookingGuide = bank.data().vehicalBookingGuide;
+        console.log("---------------------------");
+        console.log(`Fetching Car details from http://candecode.com/vins/${car.vin}...`);
 
-            for(let i=0; i < vehicalBookingGuide.length; i++) {
-                if(parseInt(vehicalBookingGuide[i].year) === car.year) {
-                    if(car.mileage > vehicalBookingGuide[i].minMileage && car.mileage < vehicalBookingGuide[i].maxMileage) {
-                        carStatus = vehicalBookingGuide[i];
-                        break;
+        const carDetails = carDetailsResponse.data.result;
+
+        if(carDetailsResponse.data.status == 'ok') {
+            let carValue = {
+                extraClean: carDetails["Extra Clean"],
+                clean: carDetails.Clean,
+                average: carDetails.Average,
+                rough: carDetails.Rough
+            };
+
+            console.log("Recieved the data...");
+            console.log("Updating prices based on options...");
+
+            // loop through options 
+
+            carDetails.Options.forEach((option) => {
+                if(option.status == "Found") {
+                    carValue.extraClean = carDetails["Extra Clean"] + parseInt(option.price);
+                    carValue.clean = carDetails.Clean + parseInt(option.price);
+                    carValue.average = carDetails.Average + parseInt(option.price);
+                    carValue.rough = carDetails.Rough + parseInt(option.price);
+                }
+            });
+
+            console.log("Completed price update based on options...");
+            
+            console.log("Processing data, please wait...");
+
+            let selectedBank = [];
+            let calculatedEmi = 0;
+
+            for(let i=0; i<approvedBanks.length; i++) {
+                const bankRef = db.collection('banks').doc(approvedBanks[i].bankId);
+
+                const bank = await bankRef.get();
+                const vehicalBookingGuide = bank.data().vehicalBookingGuide;
+
+                for(let i=0; i < vehicalBookingGuide.length; i++) {
+                    if(parseInt(vehicalBookingGuide[i].year) === car.year) {
+                        if(car.mileage > vehicalBookingGuide[i].minMileage && car.mileage < vehicalBookingGuide[i].maxMileage) {
+                            carStatus = vehicalBookingGuide[i];
+                            break;
+                        }
                     }
                 }
+
+                console.log(approvedBanks[i].bankProgram.RatesFrom);
+
+                let maximumAllowedLoan = ((parseInt(approvedBanks[i].bankProgram.Advance) / 100) * carValue[carStatus.type]).toFixed(2);
+
+                // ! Added term extension
+                const term = parseInt(carStatus.maxTerm) + termExtension;
+
+                // ! added docfee warranty and profit Amount;
+
+                const netCarPrice = (car.price + profitAmount) - downPayment - tradeInValue;
+
+                const interestRate = parseInt(approvedBanks[i].interestRate) - interestBreak;
+
+                if(netCarPrice <= parseInt(maximumAllowedLoan)) {
+                    let emi = 0;
+
+                    if(taxExemption) {
+                        emi = emiCalculator(netCarPrice + (car.price - tradeInAllowance) * 1.12 + (warranty * 1.05) + (docfee * 1.12) + adminFee, interestRate, term);
+                    } else {
+                        emi = emiCalculator(netCarPrice + warranty + docfee + adminFee, interestRate, term);
+                    }
+
+                    approvedBanks[i].calculatedEmi = emi;
+                    const bankValue = approvedBanks[i];
+
+                    selectedBank.push(bankValue);
+                    calculatedEmi = emi;
+                }
             }
-            
-            // ! Added term extension
-            const term = parseInt(carStatus.maxTerm) + termExtension;
 
-            // ! added docfee warranty and profit Amount;
-            const carPrice = car.price + profitAmount + warranty + docfee;
-
-            const bank_fee = 0;
-
-            const finance_net_vehicle = car.price + tradeInValue;
-
-
-            let finance_GST = 0;
-            let finance_PST = 0;
-
-            if(!taxExemption) {
-                finance_GST = (finance_net_vehicle + docfee) * 0.07;
-                finance_PST = (finance_net_vehicle + docfee + warranty) * 0.05;
+            const obj = {
+                car: car,
+                calculatedEmi: calculatedEmi,
+                bank: selectedBank
             }
 
-            const finance_total = finance_net_vehicle + docfee + warranty + finance_GST + finance_PST + bank_fee - downPayment;
-            
-            if(interestBreak >= parseInt(approvedBanks[i].interestRate)) return res.status(400).json({"error": "interest break should be less than the approved bank interest."})
-    
-            const interestRate = parseInt(approvedBanks[i].interestRate) - interestBreak;
+            if(calculatedEmi != 0) {
+                console.log("----------final object: starts-----------");
+                console.log(obj);
+                console.log("---------ends-------");
 
-            const emi = emiCalculator(finance_total, interestRate, term, downPayment, tradeInValue);
-
-            if(Math.round(emi) <= Math.round(parseInt(approvedBanks[i].monthlyEmi))) {
-                const bankValue = approvedBanks[i];
-                bankValue.emi = emi;
-                selectedBank.push(bankValue);
-                calculatedEmi = emi;
-                tryCalculatedEmi.push(emi);
+                response.push(JSON.parse(JSON.stringify(obj)));
             }
-        }
 
-        // for(let i=0; i<selectedBank; i++) {
-        //     selectedBank[i].calculatedEmi = tryCalculatedEmi[i];
-        // }
-
-        const obj = {
-            car: car,
-            calculatedEmi: calculatedEmi,
-            bank: selectedBank
-        }
-        
-        if(calculatedEmi != 0) {
-            response = [
-            ...response,
-            obj,
-            ];
-        // }
-        }
-    }
-
-    console.log(tryCalculatedEmi);
-
-    for(let i=0; i<response.length; i++) {
-        // selectedBank[i].calculatedEmi = tryCalculatedEmi[i];
-        for(let j=0; j<response[i].bank.length; j++) {
-            response[i].bank[j].newEmi = tryCalculatedEmi[j];
+            console.log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        } else {
+            console.log(`Warning: Failed to get data from API, for car ${ car.name } - ${ car.vin }, moving forward...`);
         }
     }
 

@@ -3,11 +3,13 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 const utils = require('util');
 const ejs = require('ejs');
-const { sendGridEmail } = require('./sendgrid');
+
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 const readFile = utils.promisify(fs.readFile);
 
-const {result} = require('./result');
+const { result } = require('./result');
 
 async function getTemplateHtml() {
     console.log("Loading template file in memory")
@@ -43,7 +45,6 @@ const func = (approvedBank, bank) => {
 exports.sendEmail = (async (req, res) => {
     const searchResults = req.body;
     // const searchResults = result;
-    // console.log(req.body);
 
     getTemplateHtml().then(async (file) => {
         const template = ejs.compile(file, {async: true});
@@ -70,15 +71,36 @@ exports.sendEmail = (async (req, res) => {
         console.log("preparing the result");
 
         const filePath = '/tmp/searchReport.pdf';
-        await fs.writeFile(filePath, buffer, function(err) {
+        await fs.writeFile(filePath, buffer, async (err) => {
             if(err) {
-                return console.log(err);
+                return res.status(500).json({"error": err});
             }
+            console.log("Sending the email...");
 
-            sendGridEmail(req.body.to, filePath);
+            const attachment = fs.readFileSync(filePath).toString("base64");
+
+            await sgMail.send({
+                to: req.body.to,
+                from: 'hvats.hv@gmail.com',
+                subject: 'Cars Search Results',
+                text: 'Car Search Results are ready, find them in the attachments',
+                attachments: [
+                  {
+                    content: attachment,
+                    filename: "searchResults.pdf",
+                    type: "application/pdf",
+                    disposition: "attachment"
+                  }
+                ]
+              }).catch(err => {
+                  console.log(err.response.body);
+                  res.status(500).json({"error": err});
+              });
+
+            console.log("Email successfully sent!");
+
             fs.unlinkSync(filePath);
+            return res.status(200).send("OK");
         }); 
-        
-        res.status(200).send("OK");
     });
 });
