@@ -94,6 +94,7 @@ exports.sendEmail = (async (req, res) => {
                 ]
               }).catch(err => {
                   console.log(err.response.body);
+                  console.log(process.env.FROM_EMAIL);
                   res.status(500).json({"error": err});
               });
 
