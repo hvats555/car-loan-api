@@ -81,7 +81,7 @@ exports.sendEmail = (async (req, res) => {
 
             await sgMail.send({
                 to: req.body.to,
-                from: 'hvats.hv@gmail.com',
+                from: process.env.FROM_EMAIL,
                 subject: 'Cars Search Results',
                 text: 'Car Search Results are ready, find them in the attachments',
                 attachments: [
