@@ -1,8 +1,11 @@
-if(process.env.NODE_ENV) {
-  require('dotenv').config({ path: `.env.${process.env.NODE_ENV}` })
+if(process.env.NODE_ENV == 'production') {
+  require('dotenv').config({ path: `.env.production` })
+} else if (process.env.NODE_ENV == 'development') {
+  require('dotenv').config({ path: `.env.development` })
 } else {
-  require('dotenv').config();
+  require('dotenv').config()
 }
+
 
 const admin = require('firebase-admin');
 
