@@ -3,8 +3,19 @@ const {emiCalculator} = require('../utils/search');
 const axios = require('axios');
 const _ = require('lodash');
 
+const hasMore = async (last) => {
+    const carsInventoryRef = db.collection('inventory').orderBy('cost').startAfter(last).limit(1);
+    const snapshot = await carsInventoryRef.get();
+
+    if(snapshot.size != 0) {
+        return true
+    } else {
+        return false
+    } 
+}
+
 const next = async (profitAmount, last, limit) => {
-    const carsInventoryRef = db.collection('inventory').orderBy('price').startAfter(last).limit(limit);
+    const carsInventoryRef = db.collection('inventory').orderBy('cost').startAfter(last).limit(limit);
     const snapshot = await carsInventoryRef.get();
 
     const inventory = [];
@@ -39,11 +50,6 @@ const next = async (profitAmount, last, limit) => {
 
 
 exports.search = async (req, res) => {
-    console.log("Recieved car search request");
-    console.log("------------- Body data --------------");
-    console.log(req.body);
-    console.log("---------------------------");
-
     let customerId = req.body.customerId;
     let profitAmount = parseInt(req.body.profitAmount);
     let adminFee = parseInt(req.body.adminFee);
@@ -69,7 +75,7 @@ exports.search = async (req, res) => {
     if(!customerId) return res.status(400).json({"error": "customer id not provided"});
 
     if(!profitAmount) profitAmount = 3000;
-    if(!adminFee) adminFee = 700;
+    if(!adminFee) adminFee = 0;
 
     if(!downPayment) downPayment = 0;
     if(!termExtension) termExtension = 0;
@@ -79,8 +85,7 @@ exports.search = async (req, res) => {
     if(!docfee) docfee = 0;
     if(!warranty) warranty = 0;
 
-    let tradeInValue = tradeLienAmount - tradeInAllowance;
-
+    let tradeInValue = tradeInAllowance - tradeLienAmount;
 
     const customerRef = db.collection('customers').doc(customerId);
     const customer = await customerRef.get();
@@ -91,12 +96,13 @@ exports.search = async (req, res) => {
     let last;
 
     console.log("Fetching inventory from firestore...");
+
     if(req.query.startAfter) {
         const nextInfo = await next(profitAmount, req.query.startAfter, limit);
         inventory = nextInfo.inventory;
         last = nextInfo.last;
     } else {
-        const carsInventoryRef = db.collection('inventory').orderBy('price').limit(limit);
+        const carsInventoryRef = db.collection('inventory').orderBy('cost').limit(limit);
         const snapshot = await carsInventoryRef.get();
     
         last = snapshot.docs[snapshot.docs.length - 1];
@@ -179,26 +185,25 @@ exports.search = async (req, res) => {
                     }
                 }
 
-                console.log(approvedBanks[i].bankProgram.RatesFrom);
-
                 let maximumAllowedLoan = ((parseInt(approvedBanks[i].bankProgram.Advance) / 100) * carValue[carStatus.type]).toFixed(2);
 
                 // ! Added term extension
                 const term = parseInt(carStatus.maxTerm) + termExtension;
 
-                // ! added docfee warranty and profit Amount;
+                // ! added docfee wFarranty and profit Amount;
 
                 const netCarPrice = (car.price + profitAmount) - downPayment - tradeInValue;
+                console.log(netCarPrice);
 
-                const interestRate = parseInt(approvedBanks[i].interestRate) - interestBreak;
+                const interestRate = parseFloat(approvedBanks[i].interestRate) - interestBreak;
 
                 if(netCarPrice <= parseInt(maximumAllowedLoan)) {
                     let emi = 0;
 
                     if(taxExemption) {
-                        emi = emiCalculator(netCarPrice + (car.price - tradeInAllowance) * 1.12 + (warranty * 1.05) + (docfee * 1.12) + adminFee, interestRate, term);
-                    } else {
                         emi = emiCalculator(netCarPrice + warranty + docfee + adminFee, interestRate, term);
+                    } else {
+                        emi = emiCalculator(docfee * 1.12 + netCarPrice + ((car.price + profitAmount) - tradeInAllowance) * 0.12 + warranty * 1.05 + adminFee, interestRate, term);
                     }
 
                     approvedBanks[i].calculatedEmi = emi;
@@ -230,7 +235,8 @@ exports.search = async (req, res) => {
     }
 
     res.send({
-        lastDocRef: last.data().price,
+        hasMore: await hasMore(last.data().cost),
+        lastDocRef: last.data().cost,
         result: response
     });
 }
