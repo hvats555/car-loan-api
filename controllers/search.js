@@ -142,8 +142,7 @@ exports.search = async (req, res) => {
               
         let carStatus = {};
         let isVinsError;
-
-        const carDetailsResponse = await axios.get(`http://candecode.com/vins/${car.vin}`).catch((err) => {
+        const carDetailsResponse = await axios.get(`http://candecode.com/api/v1/vins/${car.vin}`).catch((err) => {
             isVinsError = err
         });
 
