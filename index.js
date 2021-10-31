@@ -15,8 +15,12 @@ const express = require("express");
 const search = require('./routes/search');
 const upload = require('./routes/upload');
 const email = require('./routes/emails');
+const _ = require('lodash');
 
 const app = express();
+
+app.locals._ = _;
+
 app.use(cors({
     origin: "*"
   }));

@@ -15,6 +15,20 @@
   </head>
 
   <body>
+
+    <%
+      function toWords(text) {
+        const result = text.replace(/([A-Z])/g, " $1");
+        const finalResult = result.charAt(0).toUpperCase() + result.slice(1);
+        return finalResult
+      }
+
+      function numberWithCommas(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");  
+      }
+    %>
+
+
     <style>
       html,
       body {
@@ -111,14 +125,11 @@
       <table>
         <tr>
           <th>Image</th>
-          <th>Title</th>
-          <th>Stock Number</th>
-          <th>VIN</th>
-          <th>Mileage</th>
+          <th>Vehical</th>
           <th>Age</th>
-          <th>Accidents</th>
-          <th>Notes</th>
-          <th>Total Damage</th>
+          <th>Location</th>
+          <th>Mileage</th>
+          <th>CBB</th>
 
           <% for(var i=0; i<res.approvedBanks.length; i++){ %>
             <th><%= res.approvedBanks[i].bankName %></th>
@@ -133,25 +144,80 @@
                 <img src="<%= res.results[i].car.coverImage %>" />
               </div>
             </td>
+
+            <td>
+              <div>
+                <span>
+                    <%= res.results[i].car.name %> Stock# <%= res.results[i].car.stockNumber %>
+                </span>
+              </div>
+
+              <div>
+                <%= res.results[i].car.vin %>
+              </div>
+
+              <div>
+                  cost: <%= numberWithCommas(res.results[i].car.price + parseInt(res.results[i].car.profit)) %>
+              </div>
+
+              <% if(res.results[i].car.totalDamage > 5000){ %>
+                <a
+                style="color: red; text-decoration: underline;"
+                target="_blank" 
+                href="<%= res.results[i].car.carFaxLink %>">
   
-            <td><%= res.results[i].car.name || "N/A" %></td>
+                Carfax: $<%= numberWithCommas(res.results[i].car.totalDamage) %> (<%= res.results[i].car.notes %>) <%=res.results[i].car.numberOfAccidents %> accidents
+                </a>
+
+              <% } else { %>
+                <a
+                style="color: #0645AD; text-decoration: underline;"
+                target="_blank" 
+                href="<%= res.results[i].car.carFaxLink %>">
   
-            <td><%= res.results[i].car.stockNumber || "N/A" %></td>
-            <td><%= res.results[i].car.vin || "N/A" %></td>
-            <td><%= res.results[i].car.mileage || "N/A" %></td>
+                Carfax: $<%= numberWithCommas(res.results[i].car.totalDamage) %> (<%= res.results[i].car.notes %>) <%=res.results[i].car.numberOfAccidents %> accidents
+                </a>
+
+                <% } %>
+
+
+            </td>
+  
             <td><%= res.results[i].car.age || "N/A" %></td>
-            <td><%= res.results[i].car.numberOfAccidents || "N/A" %></td>
-            <td><%= res.results[i].car.notes || "N/A" %></td>
-            <td><%= res.results[i].car.totalDamage || "N/A" %></td>
+            <td><%= res.results[i].car.location || "N/A" %></td>
+            <td><%= numberWithCommas(res.results[i].car.mileage) || "N/A" %></td>
+
+            <td>
+              <% res.results[i].bank.map(b => { %>
+                  <div>
+                      <strong><%= b.bankName %></strong>: <%= toWords(b.cbb.condition) %> $<%= numberWithCommas(b.cbb.value) %>
+                      <br />
+                  </div>
+              <% }) %>
+
+              <strong>Found :</strong> <%= res.results[i].car.featuresFound.join(", ") %> <br/>
+              <strong>Not Found :</strong> <%= res.results[i].car.featuresNotFound.join(", ") %>
+            </td>
+
 
             <% filteredBanks.map((bank) => {
               if(bank.foundCount == 1) { %>
-                <td style="color: green"><%= bank.calculatedEmi %></td>
+                <td style="color: green">
+                  <%= numberWithCommas(Math.round(bank.calculatedEmi)) %>/mo
+                  <br/>
+                  <%= numberWithCommas(Math.round(bank.calculatedEmi/2)) %>/bw
+                  <br/>
+
+                  <span style="white-space: nowrap;">
+                      <%= bank.interestRate.toFixed(2) %>% <%=bank.term%>mo
+                  </span>
+                </td>
              <% } else { %>
-                <td style="color: red"><%= bank.calculatedEmi %></td>
+                <td style="color: red">
+                  N/A
+                </td>
               <% }
             }) %>
-        
           </tr>
         <%}%>
       </table>

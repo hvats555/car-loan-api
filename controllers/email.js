@@ -14,7 +14,7 @@ const { result } = require('./result');
 async function getTemplateHtml() {
     console.log("Loading template file in memory")
     try {
-        const filePath = path.join('./template', 'index.html');
+        const filePath = path.join('./template', 'index.ejs');
         const fullPath =  path.resolve(filePath);
 
         const quotationPath = path.resolve(fullPath);
