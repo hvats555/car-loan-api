@@ -55,6 +55,7 @@ const next = async (profitAmount, last, limit) => {
 }
 
 exports.search = async (req, res) => {
+    console.log(req.body)
     let customerId = req.body.customerId;
     let profitAmount = parseFloat(parseFloat(req.body.profitAmount).toFixed(2));
     let adminFee = parseFloat(parseFloat(req.body.adminFee).toFixed(2));
@@ -93,7 +94,15 @@ exports.search = async (req, res) => {
 
     const customerRef = db.collection('customers').doc(customerId);
     const customer = await customerRef.get();
-    const approvedBanks = customer.data().approvedBanks;
+    const approvedBanks = [];
+
+    const approvedBanksRef = db.collection(`customers/${customerId}/approvedBanks`);
+    const approvedBanksSnap = await approvedBanksRef.get();
+
+    approvedBanksSnap.forEach((doc) => {
+        approvedBanks.push(doc.data())
+    })
+
     const taxExemption = customer.data().taxExemption;
 
     let inventory = [];
@@ -138,7 +147,7 @@ exports.search = async (req, res) => {
     //consola.info("Fetched inventory from firestore");
 
     for(const car of inventory) {  
-        //consola.info("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        // consola.info("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
               
         let carStatus = {};
         let isVinsError;
@@ -184,7 +193,7 @@ exports.search = async (req, res) => {
     
                 let selectedBank = [];
                 let calculatedEmi = 0;
-    
+
                 for(let i=0; i<approvedBanks.length; i++) {
                     const bankRef = db.collection('banks').doc(approvedBanks[i].bankId);
     
@@ -211,28 +220,29 @@ exports.search = async (req, res) => {
                     //consola.info(netCarPrice);
     
                     const interestRate = parseFloat(approvedBanks[i].interestRate) - interestBreak;
+
+                    let emi = 0;
     
-                    if(netCarPrice <= parseInt(maximumAllowedLoan)) {
-                        let emi = 0;
-    
-                        if(taxExemption) {
-                            emi = emiCalculator(netCarPrice + warranty + docfee + adminFee, interestRate, term);
-                        } else {
-                            emi = emiCalculator(docfee * 1.12 + netCarPrice + ((car.price + profitAmount) - tradeInAllowance) * 0.12 + warranty * 1.05 + adminFee, interestRate, term);
-                        }
-    
-                        approvedBanks[i].calculatedEmi = emi;
-    
-                        approvedBanks[i].cbb = {
-                            condition: carStatus.type,
-                            value: carValue[carStatus.type]
-                        }
-    
-                        approvedBanks[i].interestRate = interestRate;
-                        approvedBanks[i].term = term;
-    
-                        const bankValue = approvedBanks[i];
-    
+                    if(taxExemption) {
+                        emi = emiCalculator(netCarPrice + warranty + docfee + adminFee, interestRate, term);
+                    } else {
+                        emi = emiCalculator(docfee * 1.12 + netCarPrice + ((car.price + profitAmount) - tradeInAllowance) * 0.12 + warranty * 1.05 + adminFee, interestRate, term);
+                    }
+
+                    approvedBanks[i].calculatedEmi = emi;
+
+                    approvedBanks[i].cbb = {
+                        condition: carStatus.type,
+                        value: carValue[carStatus.type]
+                    }
+
+                    approvedBanks[i].interestRate = interestRate;
+                    approvedBanks[i].term = term;
+
+                    const bankValue = approvedBanks[i];
+
+                    if(netCarPrice <= parseInt(maximumAllowedLoan) && emi > 0 && emi <= parseInt(approvedBanks[i].monthlyEmi)) {
+
                         selectedBank.push(bankValue);
                         calculatedEmi = emi;
                     }
@@ -243,14 +253,13 @@ exports.search = async (req, res) => {
                     calculatedEmi: calculatedEmi,
                     bank: selectedBank
                 }
+
+                response.push(JSON.parse(JSON.stringify(obj)));
+
+                console.log(calculatedEmi);
     
-                if(calculatedEmi > 0) {
-                    response.push(JSON.parse(JSON.stringify(obj)));
-                }
-    
-                //consola.info("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
             } else {
-                //consola.info(`Warning: Failed to get data from API, for car ${ car.name } - ${ car.vin }, moving forward...`);
+                consola.info(`Warning: Failed to get data from API, for car ${ car.name } - ${ car.vin }, moving forward...`);
             }
         } else {
             consola.warn("VINS error", isVinsError.response.status)
