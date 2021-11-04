@@ -54,27 +54,26 @@ const next = async (profitAmount, last, limit) => {
     };
 }
 
-exports.search = async (req, res) => {
-    console.log(req.body)
-    let customerId = req.body.customerId;
-    let profitAmount = parseFloat(parseFloat(req.body.profitAmount).toFixed(2));
-    let adminFee = parseFloat(parseFloat(req.body.adminFee).toFixed(2));
+const searchCars = async (searchOptions, startAfter, limit) => {
+    let customerId = searchOptions.customerId;
+    let profitAmount = parseFloat(parseFloat(searchOptions.profitAmount).toFixed(2));
+    let adminFee = parseFloat(parseFloat(searchOptions.adminFee).toFixed(2));
 
-    let downPayment = parseFloat(parseFloat(req.body.downPayment).toFixed(2));
-    let termExtension = parseFloat(parseFloat(req.body.termExtension).toFixed(2));
-    let interestBreak = parseFloat(parseFloat(req.body.interestBreak).toFixed(2));
+    let downPayment = parseFloat(parseFloat(searchOptions.downPayment).toFixed(2));
+    let termExtension = parseFloat(parseFloat(searchOptions.termExtension).toFixed(2));
+    let interestBreak = parseFloat(parseFloat(searchOptions.interestBreak).toFixed(2));
     
-    let tradeInAllowance = parseFloat(parseFloat(req.body.tradeInAllowance).toFixed(2));
-    let tradeLienAmount = parseFloat(parseFloat(req.body.tradeLienAmount).toFixed(2));
-    let docfee = parseFloat(parseFloat(req.body.docfee).toFixed(2));
-    let warranty = parseFloat(parseFloat(req.body.warranty).toFixed(2));
+    let tradeInAllowance = parseFloat(parseFloat(searchOptions.tradeInAllowance).toFixed(2));
+    let tradeLienAmount = parseFloat(parseFloat(searchOptions.tradeLienAmount).toFixed(2));
+    let docfee = parseFloat(parseFloat(searchOptions.docfee).toFixed(2));
+    let warranty = parseFloat(parseFloat(searchOptions.warranty).toFixed(2));
     let response = [];
 
-    let limit = 2;
-
-    if(req.query.limit) {
-        if(req.query.limit < 1) return res.status(400).json({"error": "limit cannot be less than 1"})
-        limit = parseInt(req.query.limit);
+    if(limit) {
+        if(limit < 1) return res.status(400).json({"error": "limit cannot be less than 1"})
+        limit = parseInt(limit);
+    } else {
+        limit = 10
     }
 
     if(!customerId) return res.status(400).json({"error": "customer id not provided"});
@@ -108,10 +107,8 @@ exports.search = async (req, res) => {
     let inventory = [];
     let last;
 
-    //consola.info("Fetching inventory from firestore...");
-
-    if(req.query.startAfter) {
-        const nextInfo = await next(profitAmount, req.query.startAfter, limit);
+    if(startAfter) {
+        const nextInfo = await next(profitAmount, startAfter, limit);
         inventory = nextInfo.inventory;
         last = nextInfo.last;
     } else {
@@ -136,7 +133,7 @@ exports.search = async (req, res) => {
                 totalDamage: doc.data().carfax_total_damage,
                 location: doc.data().location,
                 carFaxLink: doc.data().carfax_link,
-                profit: req.body.profitAmount,
+                profit: searchOptions.profitAmount,
                 featuresFound: [],
                 featuresNotFound: []
             }
@@ -144,19 +141,12 @@ exports.search = async (req, res) => {
         });
     }
 
-    //consola.info("Fetched inventory from firestore");
-
-    for(const car of inventory) {  
-        // consola.info("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-              
+    for(const car of inventory) {                
         let carStatus = {};
         let isVinsError;
         const carDetailsResponse = await axios.get(`http://candecode.com/api/v1/vins/${car.vin}`).catch((err) => {
             isVinsError = err
         });
-
-        //consola.info("---------------------------");
-        //consola.info(`Fetching Car details from http://candecode.com/vins/${car.vin}...`);
 
         if(!isVinsError) {
             const carDetails = carDetailsResponse.data.result;
@@ -168,11 +158,7 @@ exports.search = async (req, res) => {
                     average: carDetails.Average,
                     rough: carDetails.Rough
                 };
-    
-                //consola.info("Recieved the data...");
-                //consola.info("Updating prices based on options...");
-    
-                // loop through options 
+        
                 carDetails.Options.forEach((option) => {
                     if(option.status == "Found") {
                         carValue.extraClean = carDetails["Extra Clean"] + parseInt(option.price);
@@ -187,14 +173,11 @@ exports.search = async (req, res) => {
                     }
                 });
     
-                //consola.info("Completed price update based on options...");
-                
-                //consola.info("Processing data, please wait...");
-    
                 let selectedBank = [];
                 let calculatedEmi = 0;
 
                 for(let i=0; i<approvedBanks.length; i++) {
+                    let emi = 0;
                     const bankRef = db.collection('banks').doc(approvedBanks[i].bankId);
     
                     const bank = await bankRef.get();
@@ -217,17 +200,16 @@ exports.search = async (req, res) => {
                     // ! added docfee wFarranty and profit Amount;
     
                     const netCarPrice = (car.price + profitAmount) - downPayment - tradeInValue;
-                    //consola.info(netCarPrice);
     
                     const interestRate = parseFloat(approvedBanks[i].interestRate) - interestBreak;
 
-                    let emi = 0;
-    
                     if(taxExemption) {
                         emi = emiCalculator(netCarPrice + warranty + docfee + adminFee, interestRate, term);
                     } else {
                         emi = emiCalculator(docfee * 1.12 + netCarPrice + ((car.price + profitAmount) - tradeInAllowance) * 0.12 + warranty * 1.05 + adminFee, interestRate, term);
                     }
+
+                    console.log(emi);
 
                     approvedBanks[i].calculatedEmi = emi;
 
@@ -242,11 +224,11 @@ exports.search = async (req, res) => {
                     const bankValue = approvedBanks[i];
 
                     if(netCarPrice <= parseInt(maximumAllowedLoan) && emi > 0 && emi <= parseInt(approvedBanks[i].monthlyEmi)) {
-
                         selectedBank.push(bankValue);
                         calculatedEmi = emi;
                     }
                 }
+
     
                 const obj = {
                     car: car,
@@ -257,8 +239,6 @@ exports.search = async (req, res) => {
                 if(selectedBank.length > 0) {
                     response.push(JSON.parse(JSON.stringify(obj)));
                 }
-
-                console.log(calculatedEmi);
     
             } else {
                 consola.info(`Warning: Failed to get data from API, for car ${ car.name } - ${ car.vin }, moving forward...`);
@@ -268,9 +248,21 @@ exports.search = async (req, res) => {
         }
     }
 
-    res.send({
+    return {
         hasMore: await hasMore(last.data().cost),
         lastDocRef: last.data().cost,
         result: response
-    });
+    };
+}
+
+exports.search = async (req, res) => {
+    let result = await searchCars(req.body, req.query.startAfter, req.query.limit);
+
+    console.log(result);
+
+    while(result.hasMore && result.result.length == 0) {
+        result = await searchCars(req.body, result.lastDocRef, req.query.limit);
+    }
+
+    res.send(result)
 }
