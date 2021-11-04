@@ -254,7 +254,9 @@ exports.search = async (req, res) => {
                     bank: selectedBank
                 }
 
-                response.push(JSON.parse(JSON.stringify(obj)));
+                if(selectedBank.length > 0) {
+                    response.push(JSON.parse(JSON.stringify(obj)));
+                }
 
                 console.log(calculatedEmi);
     
